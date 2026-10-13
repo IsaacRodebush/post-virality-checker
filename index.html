@@ -10,7 +10,10 @@ main{max-width:860px;margin:auto;padding:14px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin:14px 0;box-shadow:0 2px 10px rgba(80,40,90,.08)}
 label{display:block;font-weight:600;margin:10px 0 4px;font-size:.92rem}
 input,select,textarea{width:100%;padding:10px;border:1px solid #e4d9e8;border-radius:10px;font:inherit;background:#fffdfd}
-textarea{min-height:130px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+textarea{min-height:220px;font-size:17px}
+.lead{font-size:1.2rem;font-weight:600;margin:0 0 10px}button.big{width:100%;padding:18px;font-size:1.2rem;margin-top:12px}
+button.copy{min-height:40px;padding:8px 16px!important;font-size:.95rem!important}
+.more{margin:20px 0;color:var(--mut)}.more summary{cursor:pointer;padding:12px;font-size:.9rem}.more>div,.more>p{padding:0 8px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:600px){.row{grid-template-columns:1fr}}
 button{background:var(--acc);color:#fff;border:0;border-radius:999px;padding:11px 20px;font:inherit;font-weight:600;cursor:pointer}
 button.sec{background:#efe7f3;color:var(--ink)}button.copy{padding:4px 12px;font-size:.8rem;background:var(--acc2);margin-left:8px}
@@ -27,14 +30,19 @@ button.sec{background:#efe7f3;color:var(--ink)}button.copy{padding:4px 12px;font
 .hist{cursor:pointer;padding:8px;border-radius:8px}.hist:hover{background:#faf6ff}
 .note{font-size:.82rem;color:var(--mut);font-style:italic}
 </style></head><body>
-<header><h1>✨ Post Virality Checker</h1><p>Check a draft before you hit publish</p></header>
+<header><h1>✨ Post Virality Checker</h1></header>
 <main>
-<div class="card">
-<div class="row"><div><label for="platform">Platform</label><select id="platform"></select></div>
+<div class="card"><p class="lead">Paste your post.</p>
+<textarea id="caption" aria-label="Your post" placeholder="Paste your caption here (hashtags too)…"></textarea>
+<div class="hint"><span id="cc">0</span> characters</div>
+<button id="go" class="big">Check my post</button></div>
+<div class="card" id="result" style="display:none">
+<div id="scoreWrap"><div id="ring"><span id="score">0</span></div><div><h2 id="label" style="margin:0"></h2><div id="fmtNote" class="hint"></div><div class="note">This is a rough guide based on common best practices, not a guarantee. Real reach depends on the algorithm, your audience, timing and luck.</div></div></div>
+<div id="factors"></div></div>
+<div class="card" id="improve" style="display:none"><h2>💡 How to improve</h2><div id="impBody"></div></div>
+<details class="more"><summary>More options</summary><div class="row"><div><label for="platform">Platform</label><select id="platform"></select></div>
 <div><label for="format">Format</label><select id="format"></select></div></div>
 <div id="soon" class="hint"></div>
-<label for="caption">Caption</label><textarea id="caption" placeholder="Write or paste your caption…"></textarea>
-<div class="hint"><span id="cc">0</span> characters</div>
 <label for="hashtags">Hashtags <span class="hint">(optional — we also pick up #tags inside the caption)</span></label>
 <input id="hashtags" placeholder="#homedecor #diy">
 <div class="row"><div><label for="image">Image (optional)</label><input type="file" id="image" accept="image/*"><img id="preview" alt="preview"><div id="ar" class="hint"></div></div>
@@ -44,13 +52,10 @@ button.sec{background:#efe7f3;color:var(--ink)}button.copy{padding:4px 12px;font
 <div><label for="ptime">Planned time</label><input id="ptime" type="time"></div></div>
 <label for="trends">Custom trends / keywords right now <span class="hint">(comma separated, optional)</span></label>
 <input id="trends" placeholder="e.g. fall reset, taylor swift, sourdough">
-<p><button id="go">Check my post</button> <button class="sec" id="save">Save draft</button></p>
-</div>
-<div class="card" id="result" style="display:none">
-<div id="scoreWrap"><div id="ring"><span id="score">0</span></div><div><h2 id="label" style="margin:0"></h2><div class="note">This is a rough guide based on common best practices, not a guarantee. Real reach depends on the algorithm, your audience, timing and luck.</div></div></div>
-<div id="factors"></div></div>
-<div class="card" id="improve" style="display:none"><h2>💡 How to improve</h2><div id="impBody"></div></div>
-<div class="card"><h3 style="margin-top:0">📝 Saved drafts</h3><div id="history" class="hint">No drafts yet.</div><p><button class="sec" id="clearH">Clear history</button></p></div>
+
+<p><button class="sec" id="save">Save draft</button></p>
+<div ><h3 style="margin-top:0">📝 Saved drafts</h3><div id="history" class="hint">No drafts yet.</div><p><button class="sec" id="clearH">Clear history</button></p></div>
+</details>
 </main>
 <script id="engine">
 var PLATFORMS={
@@ -175,16 +180,17 @@ if(typeof module!=="undefined")module.exports={score:score,PLATFORMS:PLATFORMS};
 (function(){var $=function(i){return document.getElementById(i)},aspect=null,imgData=null;
 var DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];DAYS.forEach(function(d,i){var o=document.createElement("option");o.value=i;o.textContent=d;$("pday").appendChild(o)});
 Object.keys(PLATFORMS).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=PLATFORMS[k].name+(PLATFORMS[k].ready?"":" (basic — coming soon)");$("platform").appendChild(o)});
-function fillFormats(){var P=PLATFORMS[$("platform").value];$("format").innerHTML="";Object.keys(P.formats).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=P.formats[k].name;$("format").appendChild(o)});$("soon").textContent=P.ready?"":"Full rules for "+P.name+" are coming soon — this uses simplified guidelines.";}
+function fillFormats(){var P=PLATFORMS[$("platform").value];$("format").innerHTML="<option value=\"auto\">Auto-detect</option>";Object.keys(P.formats).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=P.formats[k].name;$("format").appendChild(o)});$("soon").textContent=P.ready?"":"Full rules for "+P.name+" are coming soon — this uses simplified guidelines.";}
 $("platform").onchange=fillFormats;fillFormats();
 $("caption").oninput=function(){$("cc").textContent=this.value.length};
 $("image").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var img=$("preview");img.onload=function(){aspect=img.naturalWidth/img.naturalHeight;$("ar").textContent="Size "+img.naturalWidth+"×"+img.naturalHeight+" (ratio "+aspect.toFixed(2)+")"};img.src=r.result;img.style.display="block"};r.readAsDataURL(f)};
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function col(s){return s>=75?"var(--ok)":s>=50?"var(--mid)":"var(--bad)"}
-function gather(){return{platform:$("platform").value,format:$("format").value,caption:$("caption").value,hashtags:$("hashtags").value,link:$("link").value,videoLength:$("vlen").value,day:$("pday").value,time:$("ptime").value,trends:$("trends").value,aspect:aspect}}
+function detectFormat(c){c=c.toLowerCase();if(/(swipe|slide|carousel|\n\s*\d+[.)]|^\s*\d+[.)])/m.test(c))return"carousel";if(/(photo|pic|picture|snapshot|selfie|portrait)\b/.test(c)&&!/(reel|video|watch|clip)/.test(c))return"single";if(/\bstory\b/.test(c))return"story";return"reel"}
+function gather(){var pl=$("platform").value,fm=$("format").value;if(fm==="auto"){var P=PLATFORMS[pl];fm=pl==="instagram"?detectFormat($("caption").value):Object.keys(P.formats)[0]}var nd=new Date();return{platform:pl,format:fm,caption:$("caption").value,hashtags:$("hashtags").value,link:$("link").value,videoLength:$("vlen").value,day:$("pday").value!==""?$("pday").value:String(nd.getDay()),time:$("ptime").value||(String(nd.getHours()).padStart(2,"0")+":"+String(nd.getMinutes()).padStart(2,"0")),trends:$("trends").value,aspect:aspect}}
 function sug(t){return '<div class="sug"><pre>'+esc(t)+'</pre><button class="copy" data-t="'+esc(t)+'">Copy</button></div>'}
-function render(){var r=score(gather());$("result").style.display="block";$("score").textContent=r.score;$("ring").style.background="conic-gradient("+col(r.score)+" "+r.score*3.6+"deg,#f1e8f3 0)";$("label").textContent=r.label;
-$("factors").innerHTML=r.factors.map(function(f){return '<div class="factor"><div class="fhead"><span>'+esc(f.name)+' <span class="hint">('+f.weight+'%)</span></span><span>'+f.score+'/100</span></div><div class="bar"><i style="width:'+f.score+'%;background:'+col(f.score)+'"></i></div><div class="reason">'+esc(f.reason)+'</div>'+(f.score<85?'<div class="fix">Fix: '+esc(f.fix)+'</div>':'')+'</div>'}).join("");
+function render(){var r=score(gather());$("result").style.display="block";$("score").textContent=r.score;$("ring").style.background="conic-gradient("+col(r.score)+" "+r.score*3.6+"deg,#f1e8f3 0)";$("label").textContent=r.label;$("fmtNote").textContent="Checked as: "+r.platform.name+" "+r.format.name+" · posting now ("+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})+")";
+$("factors").innerHTML=r.factors.map(function(f){return '<div class="factor"><div class="fhead"><span>'+esc(f.name)+' </span><span>'+f.score+'/100</span></div><div class="bar"><i style="width:'+f.score+'%;background:'+col(f.score)+'"></i></div><div class="reason">'+esc(f.reason)+'</div>'+(f.score<85?'<div class="fix">Try: '+esc(f.fix)+'</div>':'')+'</div>'}).join("");
 if(r.showImprove){var m=r.improve,h="<h3>🎣 Stronger hook ideas</h3>"+m.hooks.map(sug).join("");
  h+="<h3>#️⃣ Hashtag ideas</h3>"+sug(m.hashtags.add.join(" "))+(m.hashtags.remove.length?'<p class="reason">Consider removing: '+esc(m.hashtags.remove.join(" "))+'</p>':'');
  if(m.trimmed)h+="<h3>✂️ Shorter version</h3>"+sug(m.trimmed);
