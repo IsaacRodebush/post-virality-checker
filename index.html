@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Post Virality Checker</title>
+<style>
+:root{--bg:#fff7f3;--card:#fff;--ink:#2d2433;--mut:#7a6f80;--acc:#e8577e;--acc2:#7b5cff;--ok:#2fae6b;--mid:#f0a52b;--bad:#e5484d}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(120deg,var(--acc),var(--acc2));color:#fff;padding:22px 16px;text-align:center}
+header h1{margin:0;font-size:1.6rem}header p{margin:6px 0 0;opacity:.9}
+main{max-width:860px;margin:auto;padding:14px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:14px 0;box-shadow:0 2px 10px rgba(80,40,90,.08)}
+label{display:block;font-weight:600;margin:10px 0 4px;font-size:.92rem}
+input,select,textarea{width:100%;padding:10px;border:1px solid #e4d9e8;border-radius:10px;font:inherit;background:#fffdfd}
+textarea{min-height:130px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.row{grid-template-columns:1fr}}
+button{background:var(--acc);color:#fff;border:0;border-radius:999px;padding:11px 20px;font:inherit;font-weight:600;cursor:pointer}
+button.sec{background:#efe7f3;color:var(--ink)}button.copy{padding:4px 12px;font-size:.8rem;background:var(--acc2);margin-left:8px}
+.hint{color:var(--mut);font-size:.82rem}
+#scoreWrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+#ring{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;font-size:2rem;font-weight:800}
+#ring span{background:#fff;width:92px;height:92px;border-radius:50%;display:grid;place-items:center}
+.factor{border-top:1px solid #f1e8f3;padding:10px 0}.fhead{display:flex;justify-content:space-between;font-weight:600}
+.bar{height:8px;background:#f1e8f3;border-radius:6px;margin:6px 0;overflow:hidden}.bar i{display:block;height:100%}
+.fix{color:var(--acc2);font-size:.9rem}.reason{font-size:.9rem;color:var(--mut)}
+.sug{background:#faf6ff;border-radius:10px;padding:8px 10px;margin:6px 0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sug pre{white-space:pre-wrap;margin:0;font:inherit;flex:1}
+#preview{max-width:160px;max-height:200px;border-radius:10px;margin-top:8px;display:none}
+.hist{cursor:pointer;padding:8px;border-radius:8px}.hist:hover{background:#faf6ff}
+.note{font-size:.82rem;color:var(--mut);font-style:italic}
+</style></head><body>
+<header><h1>✨ Post Virality Checker</h1><p>Check a draft before you hit publish</p></header>
+<main>
+<div class="card">
+<div class="row"><div><label for="platform">Platform</label><select id="platform"></select></div>
+<div><label for="format">Format</label><select id="format"></select></div></div>
+<div id="soon" class="hint"></div>
+<label for="caption">Caption</label><textarea id="caption" placeholder="Write or paste your caption…"></textarea>
+<div class="hint"><span id="cc">0</span> characters</div>
+<label for="hashtags">Hashtags <span class="hint">(optional — we also pick up #tags inside the caption)</span></label>
+<input id="hashtags" placeholder="#homedecor #diy">
+<div class="row"><div><label for="image">Image (optional)</label><input type="file" id="image" accept="image/*"><img id="preview" alt="preview"><div id="ar" class="hint"></div></div>
+<div><label for="link">Link (optional)</label><input id="link" placeholder="https://…">
+<label for="vlen">Video length, seconds (optional)</label><input id="vlen" type="number" min="0"></div></div>
+<div class="row"><div><label for="pday">Planned day</label><select id="pday"><option value="">—</option></select></div>
+<div><label for="ptime">Planned time</label><input id="ptime" type="time"></div></div>
+<label for="trends">Custom trends / keywords right now <span class="hint">(comma separated, optional)</span></label>
+<input id="trends" placeholder="e.g. fall reset, taylor swift, sourdough">
+<p><button id="go">Check my post</button> <button class="sec" id="save">Save draft</button></p>
+</div>
+<div class="card" id="result" style="display:none">
+<div id="scoreWrap"><div id="ring"><span id="score">0</span></div><div><h2 id="label" style="margin:0"></h2><div class="note">This is a rough guide based on common best practices, not a guarantee. Real reach depends on the algorithm, your audience, timing and luck.</div></div></div>
+<div id="factors"></div></div>
+<div class="card" id="improve" style="display:none"><h2>💡 How to improve</h2><div id="impBody"></div></div>
+<div class="card"><h3 style="margin-top:0">📝 Saved drafts</h3><div id="history" class="hint">No drafts yet.</div><p><button class="sec" id="clearH">Clear history</button></p></div>
+</main>
+<script id="engine">
+var PLATFORMS={
+ instagram:{name:"Instagram",ready:true,hookChars:125,tags:[3,5],len:{min:80,max:600,hard:2200},
+  formats:{reel:{name:"Reel",ratio:9/16,rname:"9:16",video:true},carousel:{name:"Carousel",ratio:4/5,rname:"4:5"},single:{name:"Single image",ratio:4/5,rname:"4:5"},story:{name:"Story",ratio:9/16,rname:"9:16",video:true}},
+  best:{days:[1,2,3,4],hours:[[7,9],[11,13],[18,21]]},vid:[7,30]},
+ tiktok:{name:"TikTok",ready:true,hookChars:100,tags:[3,5],len:{min:30,max:300,hard:4000},formats:{video:{name:"Video",ratio:9/16,rname:"9:16",video:true}},best:{days:[1,2,3,4],hours:[[12,15],[18,22]]},vid:[7,34]},
+ facebook:{name:"Facebook",ready:true,hookChars:120,tags:[0,3],len:{min:40,max:400,hard:63206},formats:{post:{name:"Post",ratio:4/5,rname:"4:5"},reel:{name:"Reel",ratio:9/16,rname:"9:16",video:true}},best:{days:[1,2,3,4],hours:[[9,13]]},vid:[7,30]},
+ x:{name:"X (Twitter)",ready:false,hookChars:80,tags:[0,2],len:{min:30,max:240,hard:280},formats:{post:{name:"Post",ratio:16/9,rname:"16:9"}},best:{days:[1,2,3],hours:[[8,11]]},vid:[7,45]},
+ youtube:{name:"YouTube Shorts",ready:false,hookChars:70,tags:[1,3],len:{min:20,max:100,hard:100},formats:{short:{name:"Short",ratio:9/16,rname:"9:16",video:true}},best:{days:[4,5,6],hours:[[12,16]]},vid:[15,45]}
+};
+var GENERIC=["love","instagood","photooftheday","fashion","beautiful","happy","cute","tbt","like4like","followme","picoftheday","follow","me","selfie","summer","instadaily","friends","repost","nature","fun","style","smile","food","likeforlike","follow4follow","f4f","l4l","viral","explore","explorepage","fyp","foryou","foryoupage","trending","instalike","likes"];
+var POWER=["secret","finally","easy","simple","proven","shocking","amazing","love","obsessed","favorite","game-changer","game changer","hack","mistake","mistakes","never","always","free","new","best","worst","instantly","quick","ultimate","honest","real","surprising","crazy","stop","must","need","budget","cozy","transform","before","after","results","hidden","nobody","everyone"];
+var CTA=["comment","save","share","tag","follow","link in bio","click","tap","dm","let me know","tell me","drop","double tap","which one","what do you think","would you","shop","sign up","subscribe","vote"];
+var SEASONAL={1:["new year","resolution","goals","winter","reset"],2:["valentine","galentine","love","winter"],3:["spring","st patrick","spring cleaning"],4:["easter","spring","earth day"],5:["mother's day","mothers day","graduation","memorial day","summer"],6:["summer","father's day","fathers day","wedding","pride"],7:["summer","4th of july","fourth of july","vacation","beach"],8:["back to school","summer","end of summer"],9:["fall","autumn","back to school","labor day","pumpkin"],10:["fall","autumn","halloween","pumpkin","spooky","cozy"],11:["thanksgiving","black friday","grateful","gratitude","fall","holiday"],12:["christmas","holiday","gift","gifts","new year","winter","cozy"]};
+var STOP="the a an and or but of to in on for with my your our is are was were be been it this that i you we they me at as so just from have has had do did not all can will about what when how why who its it's im i'm get got very really out up want thing things talk today finished new one some more our us also like make made took try tried go going see".split(" ");
+function tagsOf(caption,extra){var s=(caption||"")+" "+(extra||"");var m=s.match(/#[\p{L}\p{N}_]+/gu)||[];var seen={},out=[];m.forEach(function(t){var k=t.toLowerCase();if(!seen[k]){seen[k]=1;out.push(k)}});return out}
+function stripTags(c){return (c||"").replace(/#[\p{L}\p{N}_]+/gu,"").replace(/[ \t]+\n/g,"\n").trim()}
+function emojiCount(s){return (s.match(/\p{Extended_Pictographic}/gu)||[]).length}
+function firstLine(text,n){var l=text.split(/\n/).find(function(x){return x.trim()})||"";return l.trim().slice(0,n)}
+function keywords(text,n){var w=(text.toLowerCase().match(/[a-z][a-z'-]{2,}/g)||[]).filter(function(x){return STOP.indexOf(x)<0&&POWER.indexOf(x)<0&&CTA.indexOf(x)<0});var f={};w.forEach(function(x){f[x]=(f[x]||0)+1});var pos={};w.forEach(function(x,i){if(pos[x]==null)pos[x]=i});return Object.keys(f).sort(function(a,b){return f[b]-f[a]||pos[a]-pos[b]}).slice(0,n||5)}
+function clamp(x){return Math.max(0,Math.min(100,Math.round(x)))}
+function inHours(h,ranges){return ranges.some(function(r){return h>=r[0]&&h<r[1]})}
+function score(input){
+ var P=PLATFORMS[input.platform]||PLATFORMS.instagram,F=P.formats[input.format]||P.formats[Object.keys(P.formats)[0]];
+ var raw=input.caption||"",body=stripTags(raw),low=body.toLowerCase(),tags=tagsOf(raw,input.hashtags),now=input.now||new Date();
+ var fs=[];function add(id,name,w,s,reason,fix){fs.push({id:id,name:name,weight:w,score:clamp(s),reason:reason,fix:fix})}
+ // hook
+ var hook=firstLine(body,P.hookChars),hl=hook.toLowerCase(),hs=20,hit=[];
+ if(/\?/.test(hook)){hs+=20;hit.push("a question")}
+ if(/\d/.test(hook)){hs+=18;hit.push("a number")}
+ if(/\byou(r|'re|’re)?\b/.test(hl)){hs+=15;hit.push("speaks to 'you'")}
+ if(/(secret|nobody|no one|why|what happened|here's|here’s|wait|until|the truth|didn't expect|you won't|stop|don't)/.test(hl)){hs+=17;hit.push("a curiosity gap")}
+ if(/(best|worst|never|always|only|game.?changer|biggest|everyone|must|easiest|ultimate|!)/.test(hl)){hs+=12;hit.push("a bold claim")}
+ if(hook.length>P.hookChars-5&&body.split("\n")[0].length>P.hookChars)hs-=10;
+ if(!hook)hs=0;
+ add("hook","Hook strength",20,hs,hook?(hit.length?"Your opening line uses "+hit.join(", ")+".":"Your first line doesn't give people a reason to stop scrolling."):"No caption yet.","Open with a question, a number, a bold claim or a curiosity gap, and talk to 'you' in the first "+P.hookChars+" characters.");
+ // length
+ var L=body.length,ls,lr;
+ if(L>P.len.hard){ls=5;lr="Too long — over the "+P.len.hard+" character limit."}
+ else if(L<P.len.min){ls=L?45:0;lr="Pretty short ("+L+" chars). A little more context helps people engage."}
+ else if(L<=P.len.max){ls=100;lr="Nice length ("+L+" chars)."}
+ else{ls=Math.max(30,100-(L-P.len.max)/P.len.max*100);lr="On the long side ("+L+" chars); most people won't tap 'more'."}
+ add("length","Length fit",10,ls,lr,"Aim for about "+P.len.min+"–"+P.len.max+" characters.");
+ // hashtags
+ var gen=tags.filter(function(t){return GENERIC.indexOf(t.slice(1))>=0}),n=tags.length,tsc,tr;
+ if(n===0){tsc=P.tags[0]===0?80:25;tr="No hashtags."}
+ else if(n>=P.tags[0]&&n<=P.tags[1]){tsc=100;tr=n+" hashtags — right in the sweet spot."}
+ else if(n<P.tags[0]){tsc=65;tr="Only "+n+" hashtag(s)."}
+ else{tsc=Math.max(20,100-(n-P.tags[1])*8);tr=n+" hashtags is more than needed."}
+ if(gen.length){tsc-=gen.length*12;tr+=" Generic/spammy tags: "+gen.join(" ")+"."}
+ add("hashtags","Hashtags",10,tsc,tr,"Use "+P.tags[0]+"–"+P.tags[1]+" specific, relevant tags (niche + topic). Skip ones like #fyp or #like4like.");
+ // cta
+ var ctas=CTA.filter(function(c){return low.indexOf(c)>=0});var cs=ctas.length?(ctas.length>1?100:85):(/\?\s*$/.test(body.trim())?65:15);
+ add("cta","Call to action",15,cs,ctas.length?"Asks people to: "+ctas.join(", ")+".":"No clear ask for comments, saves or shares.","End with one clear ask, like 'Save this for later' or 'Which one would you pick?'.");
+ // emotion
+ var pw=POWER.filter(function(p){return new RegExp("\\b"+p.replace(/[-\s]/g,"[-\\s]")+"\\b").test(low)});var es=Math.min(100,25+pw.length*22);
+ add("emotion","Emotional / power words",10,es,pw.length?"Found: "+pw.join(", ")+".":"Feels a bit flat — no emotional or power words.","Add a couple of words like 'finally', 'obsessed', 'easy', 'secret', 'game-changer'.");
+ // readability
+ var lines=body.split(/\n/).filter(function(x){return x.trim()}).length,em=emojiCount(body),rs=100,rr=[];
+ var longest=Math.max.apply(null,body.split(/\n/).map(function(x){return x.length}).concat([0]));
+ if(L>200&&lines<3){rs-=35;rr.push("big wall of text — add line breaks")}
+ if(longest>350){rs-=15;rr.push("a very long paragraph")}
+ if(em===0&&L>0){rs-=10;rr.push("no emoji (one or two add warmth)")}
+ if(em>Math.max(6,L/40)){rs-=30;rr.push("lots of emoji ("+em+")")}
+ add("readability","Readability",10,L?rs:0,rr.length?"Watch out: "+rr.join("; ")+".":"Easy to skim.","Short lines, a blank line between ideas, 1–4 emoji.");
+ // format/aspect
+ var fsc=70,fr="No image uploaded — can't check the shape.";
+ if(input.aspect){var d=Math.abs(input.aspect-F.ratio)/F.ratio;fsc=d<0.04?100:d<0.15?65:30;fr="Image is "+input.aspect.toFixed(2)+" (w/h); "+F.name+" works best at "+F.rname+(d<0.04?" ✔":"")+".";}
+ if(input.link&&input.platform==="instagram"&&F.name!=="Story"){fsc-=15;fr+=" Links in Instagram captions aren't clickable — use 'link in bio'."}
+ if(input.platform==="instagram"&&(F.name==="Single image")){fsc-=10;fr+=" Single images usually reach fewer people than Reels or carousels."}
+ add("format","Format & aspect fit",10,fsc,fr,"Crop to "+F.rname+" for "+F.name+".");
+ // video
+ if(F.video){var v=+input.videoLength,vs,vr;if(!v){vs=60;vr="No video length entered."}else if(v>=P.vid[0]&&v<=P.vid[1]){vs=100;vr=v+"s — sweet spot."}else if(v<P.vid[0]){vs=55;vr=v+"s is very short."}else{vs=Math.max(25,100-(v-P.vid[1])*1.5);vr=v+"s is longer than the "+P.vid[0]+"–"+P.vid[1]+"s sweet spot."}
+  add("video","Video length",5,vs,vr,"Keep it around "+P.vid[0]+"–"+P.vid[1]+" seconds with the payoff early.");}
+ // time
+ var ts=60,tr2="No posting time set.";
+ if(input.day!==""&&input.day!=null||input.time){var dd=input.day===""||input.day==null?null:+input.day,hh=input.time?+input.time.split(":")[0]:null;ts=50;var parts=[];
+  if(dd!=null){if(P.best.days.indexOf(dd)>=0){ts+=25;parts.push("good day")}else parts.push("quieter day")}else ts+=10;
+  if(hh!=null){if(inHours(hh,P.best.hours)){ts+=25;parts.push("good time")}else if(hh<6||hh>=23){ts-=25;parts.push("most people are asleep")}else parts.push("off-peak time")}else ts+=10;
+  tr2="Planned: "+parts.join(", ")+".";}
+ add("time","Posting time",5,ts,tr2,"Try "+P.best.hours.map(function(r){return r[0]+":00–"+r[1]+":00"}).join(" or ")+" on a weekday.");
+ // timeliness
+ var mon=now.getMonth()+1,kw=(SEASONAL[mon]||[]).concat(SEASONAL[mon%12+1]||[]),custom=(input.trends||"").split(",").map(function(s){return s.trim().toLowerCase()}).filter(Boolean);
+ var all=low+" "+tags.join(" ");var sh=kw.filter(function(k){return all.indexOf(k)>=0||all.indexOf(k.replace(/[\s']/g,""))>=0}),ch=custom.filter(function(k){return all.indexOf(k)>=0||all.indexOf(k.replace(/\s/g,""))>=0});
+ var tms=Math.min(100,40+sh.length*25+ch.length*35);
+ add("timeliness","Timeliness",5,tms,(sh.length||ch.length)?"Ties into what's happening now: "+sh.concat(ch).join(", ")+".":"Not tied to a season or current trend.","Connect to something timely, e.g. "+kw.slice(0,3).join(", ")+(custom.length?", or your trends: "+custom.join(", "):"")+".");
+ var tw=fs.reduce(function(a,f){return a+f.weight},0),tot=clamp(fs.reduce(function(a,f){return a+f.score*f.weight},0)/tw);
+ var label=tot>=80?"High potential":tot>=65?"Strong potential":tot>=45?"Moderate potential":"Low potential";
+ var res={score:tot,label:label,factors:fs,platform:P,format:F,tags:tags,body:body};
+ res.lowFactors=fs.filter(function(f){return f.score<60});
+ res.showImprove=tot<65||res.lowFactors.length>0;
+ res.improve=res.showImprove?improve(res,input):null;
+ return res;}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+function topic(body){var k=keywords(firstLine(body,100000)||body,2);return k.length?k.join(" "):"this"}
+function improve(r,input){
+ var body=r.body,P=r.platform,F=r.format,t=topic(body),k1=keywords(firstLine(body,100000)||body,1)[0]||"this",out={};
+ var first=(firstLine(body,200)||"");if(first.length>90)first=first.slice(0,90).replace(/\s+\S*$/,"")+"…";else first=first.replace(/[.!?]+$/,"")+".";
+ out.hooks=["Nobody tells you this about "+t+" 👀","3 "+t+" tips I wish I knew sooner (#2 surprised me)","Stop scrolling if you've ever struggled with "+t+"."+(first?" "+cap(first):"")].slice(0,3);
+ if(/\?/.test(first)===false&&first)out.hooks[1]="Want to know the secret to "+t+"? "+cap(first);
+ var kws=keywords(body,6),have=r.tags.map(function(x){return x.slice(1)});
+ var gen=r.tags.filter(function(x){return GENERIC.indexOf(x.slice(1))>=0});
+ var sugg=[];kws.forEach(function(k){var tg=k.replace(/[^a-z0-9]/g,"");if(have.indexOf(tg)<0)sugg.push("#"+tg)});
+ if(kws.length>=2){var c=(kws[0]+kws[1]).replace(/[^a-z0-9]/g,"");if(have.indexOf(c)<0)sugg.push("#"+c)}
+ sugg.push("#"+t.replace(/[^a-z0-9]/g,"")+"tips");
+ out.hashtags={add:sugg.slice(0,Math.max(3,P.tags[1])),remove:gen};
+ if(body.length>P.len.max){var sents=body.replace(/\n+/g," \n").split(/(?<=[.!?])\s+/),s="";for(var i=0;i<sents.length;i++){if((s+" "+sents[i]).length>P.len.max*0.85)break;s+=(s?" ":"")+sents[i]}
+  if(!s)s=body.slice(0,P.len.max*0.85).replace(/\s+\S*$/,"")+"…";out.trimmed=s.replace(/ \n/g,"\n").trim()+"\n\n💬 Want the full version? Comment 'MORE'!"}
+ out.ctas=["Save this for later so you don't forget 📌","Which one would you pick — 1, 2 or 3? Tell me below 👇","Send this to a friend who needs it 💌","Comment '"+k1.toUpperCase()+"' and I'll share more!"];
+ var adv=[];if(/\n\s*(\d+[.)]|[-•✅])/.test(body)||(body.match(/\d+[.)]/g)||[]).length>=3)adv.push("Your caption reads like a list — turn it into a Carousel (one tip per slide) so people save it.");
+ if(input.platform==="instagram"&&F.name==="Single image")adv.push("Consider making this a Reel (7–30s) or a Carousel — they usually get more reach than a single image.");
+ if(input.platform==="instagram"&&F.name==="Story")adv.push("Stories disappear in 24h — if this is evergreen, post it as a Reel and share the Reel to your Story.");
+ if(/(how to|tutorial|step|before|after|diy|recipe)/i.test(body)&&!F.video)adv.push("This is great for video: a quick before/after or step-by-step Reel.");
+ if(F.video&&+input.videoLength>P.vid[1])adv.push("Cut the video to under "+P.vid[1]+"s, or split it into a 2-part series.");
+ if(input.aspect&&r.factors.find(function(f){return f.id==="format"}).score<70)adv.push("Re-crop your image to "+F.rname+" so it fills the screen.");
+ if(!adv.length)adv.push("Format looks fine — focus on the hook and CTA first.");
+ out.format=adv;return out;}
+if(typeof module!=="undefined")module.exports={score:score,PLATFORMS:PLATFORMS};
+</script>
+<script>
+(function(){var $=function(i){return document.getElementById(i)},aspect=null,imgData=null;
+var DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];DAYS.forEach(function(d,i){var o=document.createElement("option");o.value=i;o.textContent=d;$("pday").appendChild(o)});
+Object.keys(PLATFORMS).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=PLATFORMS[k].name+(PLATFORMS[k].ready?"":" (basic — coming soon)");$("platform").appendChild(o)});
+function fillFormats(){var P=PLATFORMS[$("platform").value];$("format").innerHTML="";Object.keys(P.formats).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=P.formats[k].name;$("format").appendChild(o)});$("soon").textContent=P.ready?"":"Full rules for "+P.name+" are coming soon — this uses simplified guidelines.";}
+$("platform").onchange=fillFormats;fillFormats();
+$("caption").oninput=function(){$("cc").textContent=this.value.length};
+$("image").onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var img=$("preview");img.onload=function(){aspect=img.naturalWidth/img.naturalHeight;$("ar").textContent="Size "+img.naturalWidth+"×"+img.naturalHeight+" (ratio "+aspect.toFixed(2)+")"};img.src=r.result;img.style.display="block"};r.readAsDataURL(f)};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function col(s){return s>=75?"var(--ok)":s>=50?"var(--mid)":"var(--bad)"}
+function gather(){return{platform:$("platform").value,format:$("format").value,caption:$("caption").value,hashtags:$("hashtags").value,link:$("link").value,videoLength:$("vlen").value,day:$("pday").value,time:$("ptime").value,trends:$("trends").value,aspect:aspect}}
+function sug(t){return '<div class="sug"><pre>'+esc(t)+'</pre><button class="copy" data-t="'+esc(t)+'">Copy</button></div>'}
+function render(){var r=score(gather());$("result").style.display="block";$("score").textContent=r.score;$("ring").style.background="conic-gradient("+col(r.score)+" "+r.score*3.6+"deg,#f1e8f3 0)";$("label").textContent=r.label;
+$("factors").innerHTML=r.factors.map(function(f){return '<div class="factor"><div class="fhead"><span>'+esc(f.name)+' <span class="hint">('+f.weight+'%)</span></span><span>'+f.score+'/100</span></div><div class="bar"><i style="width:'+f.score+'%;background:'+col(f.score)+'"></i></div><div class="reason">'+esc(f.reason)+'</div>'+(f.score<85?'<div class="fix">Fix: '+esc(f.fix)+'</div>':'')+'</div>'}).join("");
+if(r.showImprove){var m=r.improve,h="<h3>🎣 Stronger hook ideas</h3>"+m.hooks.map(sug).join("");
+ h+="<h3>#️⃣ Hashtag ideas</h3>"+sug(m.hashtags.add.join(" "))+(m.hashtags.remove.length?'<p class="reason">Consider removing: '+esc(m.hashtags.remove.join(" "))+'</p>':'');
+ if(m.trimmed)h+="<h3>✂️ Shorter version</h3>"+sug(m.trimmed);
+ h+="<h3>📣 Call-to-action lines</h3>"+m.ctas.map(sug).join("");
+ h+="<h3>🎬 Format ideas</h3><ul>"+m.format.map(function(a){return"<li>"+esc(a)+"</li>"}).join("")+"</ul>";
+ $("impBody").innerHTML=h;$("improve").style.display="block"}else $("improve").style.display="none";
+return r}
+document.addEventListener("click",function(e){var b=e.target.closest(".copy");if(!b)return;var t=b.getAttribute("data-t");var done=function(){b.textContent="Copied!";setTimeout(function(){b.textContent="Copy"},1500)};
+ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,fallback);else fallback();function fallback(){var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy")}catch(x){}ta.remove();done()}});
+$("go").onclick=function(){render();$("result").scrollIntoView({behavior:"smooth"})};
+var KEY="pvc_history";function hist(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]}}
+function showHist(){var h=hist();$("history").innerHTML=h.length?h.map(function(d,i){return'<div class="hist" data-i="'+i+'"><b>'+esc(d.score)+'</b> · '+esc(PLATFORMS[d.input.platform].name)+' · '+esc((d.input.caption||"").slice(0,60))+'… <span class="hint">'+esc(d.when)+'</span></div>'}).join(""):"No drafts yet."}
+$("save").onclick=function(){var r=render(),h=hist(),inp=gather();h.unshift({input:inp,score:r.score,when:new Date().toLocaleString()});localStorage.setItem(KEY,JSON.stringify(h.slice(0,30)));showHist()};
+$("history").onclick=function(e){var d=e.target.closest(".hist");if(!d)return;var x=hist()[+d.dataset.i].input;$("platform").value=x.platform;fillFormats();["format","caption","hashtags","link","trends"].forEach(function(k){$(k).value=x[k]||""});$("vlen").value=x.videoLength||"";$("pday").value=x.day;$("ptime").value=x.time||"";aspect=x.aspect;$("cc").textContent=x.caption.length;render()};
+$("clearH").onclick=function(){if(confirm("Clear all saved drafts?")){localStorage.removeItem(KEY);showHist()}};showHist();
+})();
+</script></body></html>
